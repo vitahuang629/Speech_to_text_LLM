@@ -1,10 +1,10 @@
-Project Name: Voice Record Assistant
-Purpose: 
+# Project Name: Voice Record Assistant
+## Purpose: 
 This project is designed to assist consultants, physical therapists, and physicians in efficiently recording conversations with patients. It also helps automatically extract and structure key customer information during dialogues.
 
 此專案旨在協助諮詢師、物理治療師與醫師，在與病人對話過程中有效紀錄對話內容，並自動整理病患的個人輪廓與重點資訊。
 
-Methodology:
+## Methodology:
 1. Data Preparation & Model Training
 Audio recordings are segmented into 30-second clips.
 
@@ -23,7 +23,7 @@ We use the Ollama Breeze 7B model to generate structured and concise summaries o
 完成語音轉文字後，內容將傳送至架設於 AWS EC2 上的 LLM 模型，
 使用 Ollama Breeze 7B 進行摘要生成，協助記錄對話重點與病患資訊。
 
-Applications:
+## Applications:
 Medical consultation records
 
 Physiotherapy session summaries
