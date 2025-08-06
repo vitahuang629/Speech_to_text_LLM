@@ -29,3 +29,6 @@ Medical consultation records
 Physiotherapy session summaries
 
 Aesthetic and wellness clinic records
+
+## Workflow:
+![系統架構圖](static/workflow.png)
