@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "azure-speech"
+version = "0.1.0"
+description = ""
+authors = ["Vita Huang <bexo@gastom.com.tw>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "3.11.0"
+azure-cognitiveservices-speech = "1.42.0"
+fastapi = "^0.115.12"
+uvicorn = "^0.34.2"
+websockets = "^15.0.1"
+requests = "^2.32.3"
+aiohttp = "^3.12.14"
+sqlalchemy = "^2.0.43"
+pymysql = "^1.1.2"
+openai = "^1.106.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
