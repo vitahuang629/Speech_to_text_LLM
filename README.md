@@ -19,11 +19,13 @@ This project is designed to assist **consultants**, **physical therapists**, and
 > 同時收集相關專業術語，以提升辨識準確度。
 
 ### 2. Summarization with LLM
-- Transcribed text is passed to a **customized LLM** hosted on **AWS EC2**.
-- We use the **Ollama Breeze 7B model** to generate structured and concise summaries of each consultation.
+- Workflow: The transcribed text is processed to generate structured and concise consultation summaries.
+- Initial Approach: We initially deployed the Ollama Breeze 7B model on AWS EC2 for cost-effective, self-hosted inference.
+- Optimization: To meet the high standards for accuracy required by the business, we transitioned the underlying model to OpenAI's API (GPT-4o/GPT-3.5), ensuring more precise extraction of key medical information.
 
-> 完成語音轉文字後，內容將傳送至架設於 AWS EC2 上的 LLM 模型，  
-> 使用 **Ollama Breeze 7B** 進行摘要生成，協助記錄對話重點與病患資訊。
+> 流程說明： 將語音轉寫後的文本輸入語言模型，生成結構化且精簡的看診摘要。
+> 初期架構： 最初採用部署於 AWS EC2 的 Ollama Breeze 7B 模型，進行本地端推論以測試可行性。
+> 架構優化： 考量到商業應用對於內容準確性的高標準要求，系統最終遷移至 OpenAI API，顯著提升了對話重點捕捉與病歷資訊的精確度。
 
 ---
 
@@ -57,18 +59,15 @@ I was responsible for the **backend development**, including:
 
 ## 專案結構
 
-- `consult_ws.py`  
-  諮詢師用的 WebSocket 服務，負責接收諮詢師端語音並處理辨識。
+- consult_ws.py WebSocket service for the consultant's side. Handles real-time audio streaming and speech recognition for consultants.
+- doct_ws.py WebSocket service for the doctor's side. Handles real-time audio streaming and speech recognition for doctors.
+- index.html Frontend testing interface. Used to simulate WebSocket audio transmission and display speech recognition results.
+- Legacy / Backup Files (main1.py, main.py, index1.html) These are previous iterations or backup files kept for reference.
 
-- `doct_ws.py`  
-  醫生用的 WebSocket 服務，負責接收醫生端語音並處理辨識。
-
-- `index.html`  
-  前端測試頁面，可用來模擬 WebSocket 語音傳輸與辨識結果。  
-
-- 其他檔案  
-  'main1.py', 'main.py', 'index1.html'是之前的修改檔。
-
+> consult_ws.py 諮詢師用的 WebSocket 服務，負責接收諮詢師端語音並處理辨識。
+> doct_ws.py 醫生用的 WebSocket 服務，負責接收醫生端語音並處理辨識。
+> index.html 前端測試頁面，可用來模擬 WebSocket 語音傳輸與辨識結果。
+> 其他檔案 (Other Files) main1.py, main.py, index1.html 是之前的修改檔。
 
 ## 👨‍💻 Author
 
