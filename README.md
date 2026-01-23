@@ -1,6 +1,6 @@
-# 🎙️ Voice Record Assistant
+# Voice Record Assistant
 
-## 🎯 Purpose
+## Purpose
 
 This project is designed to assist **consultants**, **physical therapists**, and **physicians** in efficiently recording conversations with patients. It also helps automatically extract and structure key customer information during dialogues.
 
@@ -8,7 +8,7 @@ This project is designed to assist **consultants**, **physical therapists**, and
 
 ---
 
-## 🛠️ Methodology
+## Methodology
 
 ### 1. Data Preparation & Model Training
 - Audio recordings are segmented into 30-second clips.
@@ -29,13 +29,13 @@ This project is designed to assist **consultants**, **physical therapists**, and
 
 ---
 
-## 🖼️ Demo Screenshot
+## Demo Screenshot
 
 ![系統架構圖](static/workflow.png)
 
 ---
 
-## 🙋‍♀️ My Role
+## My Role
 
 I was responsible for the **backend development**, including:
 
@@ -48,7 +48,7 @@ I was responsible for the **backend development**, including:
 
 ---
 
-## 📌 Applications
+## Applications
 
 - Medical consultation record automation  
 - Physiotherapy session summarization  
@@ -69,7 +69,7 @@ I was responsible for the **backend development**, including:
 > index.html 前端測試頁面，可用來模擬 WebSocket 語音傳輸與辨識結果。
 > 其他檔案 (Other Files) main1.py, main.py, index1.html 是之前的修改檔。
 
-## 👨‍💻 Author
+## Author
 
 **Vita Huang**  
 Backend & AI Integration  
