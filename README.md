@@ -34,17 +34,23 @@ This project is designed to assist **consultants**, **physical therapists**, and
 
 * **Real-time Infrastructure:** Implementing **WebSocket** servers for stable, low-latency audio streaming.
     * *實作低延遲即時語音串流的 WebSocket 通訊。*
+
 * **Service Integration:** Integrating **Azure Speech-to-Text** API for high-fidelity transcription.
     * *整合 Azure 語音轉文字服務。*
+
 * **Cloud Deployment:** Deploying the core engine on **AWS EC2** and orchestrating **OpenAI API** for efficient summarization.
     * *於 AWS 部署核心引擎並調度 OpenAI API 進行摘要處理。*
+
 * **Frontend Prototyping:** Building a web-based demo interface to visualize the real-time transcription and summary pipeline.
     * *開發前端展示介面以視覺化呈現辨識與摘要流程。*
+
+* **Speaker Diarization & Identification:** Leveraging Azure Diarization combined with OpenAI to distinguish between speakers (e.g., Doctor vs. Patient), ensuring the final summary correctly attributes medical advice and symptoms.
+    * *利用 Azure 語句分離功能 (Diarization) 搭配 OpenAI 進行角色判定，區分醫生與病人口述內容，提升摘要的準確性。*
 
 ---
 
 ## Project Structure | 專案結構
-* `aws_main.py`: Core logic on AWS EC2, ensuring session persistence and data integrity. (AWS 核心程式，負責處理語音並維持連線穩定)
+* `aws_main.py`: A robust recovery utility that retrieves locally stored audio from the database to perform full-text transcription. This ensures data integrity even if real-time streaming is interrupted due to screen lock or connection loss. (斷線補償輔助程式。當使用者因螢幕關閉或網路不穩導致即時轉錄中斷時，此功能可從資料庫抓取原始音檔重新進行完整轉錄，確保紀錄不遺失。)
 * `main.py`: Main entry point managing multiple WebSocket instances. (專案入口點，調度多個服務實例)
 * `consult_ws.py` & `doct_ws.py`: Dedicated WebSocket services for Consultants and Doctors. (諮詢師與醫師專用的 WebSocket 服務)
 * `index.html`: Interactive frontend for simulation and testing. (前端測試頁面)
@@ -57,6 +63,14 @@ This project is designed to assist **consultants**, **physical therapists**, and
 * **Aesthetics Clinics:** Structuring customer beauty profiles and treatment history. (醫美診所客製化輪廓與療程紀錄)
 
 ---
+
+## Future Work | 後續改進計畫
+* **Biometric Voiceprint Recognition:** Integrating Resemblyzer to implement employee voice identification.
+
+Workflow: Pre-record employee voiceprints into the database. During real-time sessions, the system will compare the incoming stream against the database to automatically identify the staff member.
+
+導入 Resemblyzer 進行聲紋辨識：預先錄製員工聲紋存於資料庫，在即時辨識的同時，將語音特徵進行比對，自動標註發言員工身份。
+
 
 ## Author
 **Vita Huang** Backend & AI Integration Specialist  
