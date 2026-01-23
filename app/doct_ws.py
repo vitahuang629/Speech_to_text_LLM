@@ -16,6 +16,9 @@ from datetime import datetime, timedelta, timezone
 from fastapi.responses import JSONResponse
 from openai import OpenAI
 from starlette import websockets
+from dotenv import load_dotenv
+
+load_dotenv()
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 speech_key = os.environ.get("SPEECH_KEY")

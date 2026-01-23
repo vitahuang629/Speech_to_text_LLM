@@ -1,6 +1,6 @@
 import json
 import azure.cognitiveservices.speech as speechsdk
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, APIRouter
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, APIRouter
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 import asyncio
@@ -17,11 +17,16 @@ from fastapi.responses import JSONResponse
 from openai import OpenAI
 from starlette import websockets
 from openai import AsyncOpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 speech_key = os.environ.get("SPEECH_KEY")
 speech_region = os.environ.get("SPEECH_REGION")
 endpoint_id = os.environ.get("ENDPOINT_ID")
+
+print(f"OpenAI Key 載入成功: {bool(OPENAI_API_KEY)}")
 
 router = APIRouter()
 
@@ -79,12 +84,19 @@ summarize_prompt = (
 
                 請嚴格遵守以下規範：
 
-                1. 診所與客人對話的逐字稿是你唯一能使用的資料來源，若逐字稿沒有提到，禁止杜撰、推測、延伸。
-                2. 必須使用繁體中文。
-                3. 必須保留逐字稿中的個人化資訊（藥物名稱、症狀、療程、擔心的點、個性描述、身體狀態、興趣）。
-                4. 條列式呈現，內容需具體、明確、保留細節。
-                5. 語氣口語化但專業，讓國中生可理解。
-                6. 禁止給出結論、建議、判斷，只能重述與整理既有事實。
+                1. 修正角色：Azure 辨識可能出現 Guest_0, Guest_1, Guest_2。請根據語境判斷：
+                    - 通常發起詢問、解說療程的是「諮詢師」。
+                    - 描述症狀、詢問價格、表達擔心的是「客人」。
+                    - 請在輸出時統一標示為【諮詢師】與【客人】。
+                2.轉化為「事實陳述」：禁止保留無意義的修辭、開場白或過於泛化的問句（例如：大家選哪種？）。
+                    - 錯誤範例：大家會希望選擇對自己有幫助的產品。
+                    - 正確範例：【客人】希望了解成分對肌膚的具體幫助。
+                3. 診所與客人對話的逐字稿是你唯一能使用的資料來源，若逐字稿沒有提到，禁止杜撰、推測、延伸。
+                4. 必須使用繁體中文。
+                5. 必須保留逐字稿中的個人化資訊（藥物名稱、症狀、療程、擔心的點、個性描述、身體狀態、興趣）。
+                6. 條列式呈現，內容需具體、明確、保留細節。
+                7. 語氣口語化但專業，讓國中生可理解。
+                8. 禁止給出結論、建議、判斷，只能重述與整理既有事實。
 
 輸出格式：
 ---
@@ -113,7 +125,7 @@ system_prompt = (
 疼痛：任何關於物理治療、身體部位疼痛等話題
 私密處：任何關於性生活、私密處、親密關係等話題
 臉部：任何關於臉部醫美、外表、皮膚狀況、醫美療程等話題
-再生醫療：任何針劑、注射、紅光、粒線體、身體健康改善等體內治療話題
+針劑：任何針劑、注射、紅光、粒線體、身體健康改善等體內治療話題
 其他：整段對話的總整理，保留能對客人資訊更深入了解的內容，必須客觀、事實描述，不給建議
 
 整理規範：
@@ -134,7 +146,7 @@ system_prompt = (
 - xxx
 【臉部】:
 - xxx
-【再生醫療】:
+【針劑】:
 - xxx
 【其他】:
 - xxx
@@ -194,6 +206,8 @@ async def websocket_endpoint(websocket: WebSocket):
     speech_config.speech_recognition_language = "zh-TW"
     speech_config.endpoint_id = endpoint_id
     speech_config.set_property(speechsdk.PropertyId.Speech_SegmentationStrategy, "Semantic")
+    # 分辨不同人(Diarization)
+    speech_config.set_property(property_id=speechsdk.PropertyId.SpeechServiceResponse_DiarizeIntermediateResults, value='true') #0113 加入
 
     # 1. 延長靜音超時時間 (單位 ms)：避免使用者思考太久被切斷 (預設可能比較短)
     # 設定為 20 秒 (20000ms)，如果20秒沒聲音才視為斷句
@@ -205,10 +219,13 @@ async def websocket_endpoint(websocket: WebSocket):
     speech_config.set_profanity(speechsdk.ProfanityOption.Raw)
 
     stream = speechsdk.audio.PushAudioInputStream()
-    audio_format = speechsdk.audio.AudioStreamFormat(samples_per_second=16000, bits_per_sample=16, channels=1)
+    # audio_format = speechsdk.audio.AudioStreamFormat(samples_per_second=16000, bits_per_sample=16, channels=1) 0113取消掉
     audio_config = speechsdk.audio.AudioConfig(stream=stream)
-    recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
-
+    # recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config) 0113 取消掉
+    transcriber = speechsdk.transcription.ConversationTranscriber(
+    speech_config=speech_config, 
+    audio_config=audio_config
+)   #0113 加入
 
     # 回傳 session_id 給前端 7/3
     await websocket.send_json({"type": "session_id", "session_id": session_id}) 
@@ -226,7 +243,7 @@ async def websocket_endpoint(websocket: WebSocket):
             summary = await llm.get_summary(text = system_user_prompt.format(first_summary = first_summary), system_prompt = system_prompt) #0724      #分類摘要
             
             # 驗證摘要格式是否正確
-            required_categories = ["減重", "睡眠", "疼痛", "私密處", "臉部", "再生醫療", "其他"]  #ˇ0807拿掉摘要
+            required_categories = ["減重", "睡眠", "疼痛", "私密處", "臉部", "針劑", "其他"]  #ˇ0807拿掉摘要
             for category in required_categories:
                 if f"【{category}】:" not in summary:
                     print(f"⚠️ 警告：摘要中缺少 【{category}】: 分類")
@@ -245,7 +262,7 @@ async def websocket_endpoint(websocket: WebSocket):
     def merge_summaries_by_category(summaries: list[str]) -> dict:
         """改進版的分段合併函數"""
         categories = [
-            "減重", "睡眠", "疼痛", "私密處", "臉部", "再生醫療", "其他"
+            "減重", "睡眠", "疼痛", "私密處", "臉部", "針劑", "其他"
         ]
         merged = defaultdict(list)
         
@@ -275,10 +292,10 @@ async def websocket_endpoint(websocket: WebSocket):
         # result = []
         result_dict = {}
         for category in categories:
-            if merged.get(category):    #0721
-                combined = "\n".join(merged[category])    #0721
-            else:    #0721
-                combined = ""  # 這裡改為空字串     #0721
+            if merged.get(category):    
+                combined = "\n".join(merged[category])    
+            else:    
+                combined = ""  # 這裡改為空字串     
             result_dict[category] = combined
 
 
@@ -366,8 +383,10 @@ async def websocket_endpoint(websocket: WebSocket):
             print(f"🔄 Azure 停止 ({reason_msg})，正在嘗試重啟...")
             try:
                 # 先停再開，確保乾淨重啟
-                recognizer.stop_continuous_recognition()
-                recognizer.start_continuous_recognition()
+                # recognizer.stop_continuous_recognition() 0113 取消
+                # recognizer.start_continuous_recognition() 0113 取消
+                transcriber.stop_transcribing_async().get()
+                transcriber.start_transcribing_async().get()
                 print("✅ Azure 重啟成功")
             except Exception as e:
                 print(f"❌ Azure 重啟失敗: {e}")
@@ -388,29 +407,52 @@ async def websocket_endpoint(websocket: WebSocket):
             restart_azure_recognizer(f"Canceled: {cancellation_details.reason}")
 
     # 綁定事件
-    recognizer.session_stopped.connect(on_session_stopped)
-    recognizer.canceled.connect(on_canceled)
+    # recognizer.session_stopped.connect(on_session_stopped) 0113 取消
+    # recognizer.canceled.connect(on_canceled) 0113 取消
+    transcriber.session_stopped.connect(on_session_stopped)
+    transcriber.canceled.connect(on_canceled)
 
 
 
 
-        # 接收辨識結果
+        # 接收辨識結果 0113 取消
+    # def recognized_callback(evt):
+    #     if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
+    #         text = evt.result.text
+    #         final_transcripts.append(text)
+    #         segment_transcripts.append(text)
+    #         # asyncio.run_coroutine_threadsafe(websocket.send_text(text), loop)
+    #         asyncio.run_coroutine_threadsafe(
+    #             safe_send(websocket, text),
+    #             loop
+    #         )
+    #     elif evt.result.reason == speechsdk.ResultReason.NoMatch:
+    #         print("❓ 無法辨識 (NoMatch): 使用者可能含糊不清或噪音過大")
+    #         # 這裡可以選擇要不要通知前端，通常後端紀錄就好
+
+    # recognizer.recognized.connect(recognized_callback) 0113 取消
+    # recognizer.start_continuous_recognition() 0113 取消
+
     def recognized_callback(evt):
         if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
+            speaker_id = evt.result.speaker_id
             text = evt.result.text
-            final_transcripts.append(text)
-            segment_transcripts.append(text)
-            # asyncio.run_coroutine_threadsafe(websocket.send_text(text), loop)
+            # 建議把 Speaker ID 存進去，LLM 摘要時才能分辨是誰說的
+            formatted_text = f"[{speaker_id}]: {text}\n"
+            
+            final_transcripts.append(formatted_text)
+            segment_transcripts.append(formatted_text)
+            
+            # 發送給前端顯示
             asyncio.run_coroutine_threadsafe(
-                safe_send(websocket, text),
+                safe_send(websocket, json.dumps
+                          ({"type": "transcript", 
+                            "speaker": "speaker_id",
+                            "text": formatted_text})),
                 loop
             )
-        elif evt.result.reason == speechsdk.ResultReason.NoMatch:
-            print("❓ 無法辨識 (NoMatch): 使用者可能含糊不清或噪音過大")
-            # 這裡可以選擇要不要通知前端，通常後端紀錄就好
-
-    recognizer.recognized.connect(recognized_callback)
-    recognizer.start_continuous_recognition()
+    transcriber.transcribed.connect(recognized_callback)
+    transcriber.start_transcribing_async()
 
     await websocket.send_text(json.dumps({
         "type": "session_id",
@@ -472,7 +514,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 break  #1204
 
     
-        recognizer.stop_continuous_recognition()
+        # recognizer.stop_continuous_recognition() 0113 取消
+        transcriber.stop_transcribing_async().get()
         stream.close()
         timer_task.cancel()
         silence_task.cancel()
@@ -518,11 +561,22 @@ async def websocket_endpoint(websocket: WebSocket):
                 final_combined_summary[key] = "\n".join(
                     [line for line in value.splitlines() if line.strip()]
                 ).strip()
-            summary_results[session_id] = final_combined_summary
+            if "針劑" in final_combined_summary:
+                final_combined_summary["再生醫療"] = final_combined_summary.pop("針劑")
+            cleaned_summary = {}
+            for key, value in final_combined_summary.items():
+                # 將每一行拆開，過濾掉內容只有 "- -" 的行
+                lines = [line for line in value.split('\n') if line.strip() != "- -"]
+                
+                # 重新組合成字串，如果過濾後沒內容了，就給空字串
+                cleaned_text = "\n".join(lines).strip()
+                cleaned_summary[key] = cleaned_text
+
+            summary_results[session_id] = cleaned_summary
             final_text = "\n".join(final_transcripts)
             final_results[session_id] = final_text
 
-            print("📝 最終諮詢師合併摘要：", final_combined_summary)
+            print("📝 最終諮詢師合併摘要：", cleaned_summary)
             print("📝 最終諮詢師完整逐字稿：", final_text)
             print("📝 最終諮詢師完整潤飾稿：", final_refined_transcript)
             print("📝 中斷了跑出session_id：", session_id) #7/3
@@ -548,9 +602,9 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.send_text(json.dumps({
                 "type": "final_combined_summary",
                 "session_id": session_id,
-                "summary": final_combined_summary
+                "summary": cleaned_summary
             }))
-            return final_combined_summary
+            return cleaned_summary
             # 接下來是處理異常，確保捕捉到前端中斷
     
     except WebSocketDisconnect:
@@ -562,7 +616,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
     except Exception as e:
         print(f"處理語音資料時出錯: {e}")
-        recognizer.stop_continuous_recognition()
+        # recognizer.stop_continuous_recognition() 0113 取消
+        transcriber.stop_transcribing_async().get()
         stream.close()
         timer_task.cancel()
         try:
